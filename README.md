@@ -12,6 +12,10 @@ An end-to-end data analysis project focusing on **data hygiene, anomaly resoluti
 
 Raw real-world datasets are rarely analysis-ready. This project demonstrates the step-by-step transformation of raw, un-sanitized Netflix meta-data into clean, structured data, followed by exploratory analysis to uncover content trends, top producing nations, and runtime patterns over time.
 
+## Source Dataset:
+
+https://www.kaggle.com/datasets/debayank2024/netflix-movies-and-series?resource=download
+
 ---
 
 ## 🛠️ Key Data Cleaning & Hygiene Steps
