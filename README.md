@@ -1,77 +1,219 @@
-# 🎬 Netflix Movies & TV Shows: Data Cleaning & Exploratory Data Analysis (EDA)
+# Netflix Dataset: Data Cleaning and Exploratory Data Analysis
 
-![Python](https://img.shields.io/badge/Python-3.14-3776AB?style=flat&logo=python&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-Data%20Cleaning-150458?style=flat&logo=pandas&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-Visualization-11557c?style=flat)
+This project focuses on cleaning and exploring the Netflix Movies and TV Shows dataset containing approximately 8,807 titles.
 
-An end-to-end data analysis project focusing on **data hygiene, anomaly resolution, feature engineering, and visual exploration** of the Netflix titles dataset (~8,800 entries) using strictly **Pandas** and **Matplotlib**.
+The main goal was to work through common real-world data quality issues such as missing values, incorrect data placement, inconsistent data types, and unstructured duration values. After cleaning the dataset, exploratory analysis was performed using Pandas and Matplotlib to identify patterns in Netflix's content catalog.
 
----
+## Dataset
 
-## 📌 Project Overview
+**Source:** [Kaggle - Netflix Movies and Series Dataset](https://www.kaggle.com/datasets/debayank2024/netflix-movies-and-series?resource=download)
 
-Raw real-world datasets are rarely analysis-ready. This project demonstrates the step-by-step transformation of raw, un-sanitized Netflix meta-data into clean, structured data, followed by exploratory analysis to uncover content trends, top producing nations, and runtime patterns over time.
+The dataset contains information about Netflix movies and TV shows, including:
 
-## Source Dataset:
+- Title
+- Type
+- Director
+- Cast
+- Country
+- Date Added
+- Release Year
+- Rating
+- Duration
+- Listed In
+- Description
 
-https://www.kaggle.com/datasets/debayank2024/netflix-movies-and-series?resource=download
+## Data Cleaning
 
----
+### 1. Initial Missing Value Audit
 
-## 🛠️ Key Data Cleaning & Hygiene Steps
+The first step was to check the dataset for missing values using:
 
-1. **Column Anomaly & Data Shift Fix:**
-   * Identified anomalous rows (e.g., Louis C.K. comedy specials) where runtime durations (`"74 min"`, `"84 min"`, `"66 min"`) were incorrectly positioned in the `rating` column.
-   * Shifted values back to the `duration` column and assigned appropriate maturity ratings (`TV-MA`).
+```python
+df.isnull().sum()
+```
 
-2. **Categorical Missing Value Handling:**
-   * Analyzed missing entries across key columns (`director`: ~2,634 missing, `cast`: ~825 missing, `country`: ~831 missing).
-   * Imputed explicit, clean placeholders (`"Unknown Director"`, `"Unknown Cast"`, `"Unknown Country"`, `"Unknown"`) to preserve title metadata without skewing analytical aggregations.
+The audit showed missing values in several columns:
 
-3. **Data Type Conversion & Extraction:**
-   * **`date_added`**: Converted raw date strings into native Pandas `datetime64` objects using `pd.to_datetime(..., errors='coerce')` to safely parse formatting errors into `NaT`.
-   * **`duration`**: Leveraged regular expressions (`.str.extract(r'(\d+)')`) to isolate numeric values into an integer format for quantitative runtime calculations.
+| Column | Missing Values |
+|---|---:|
+| director | 2,634 |
+| cast | 825 |
+| country | 831 |
+| date_added | 10 |
+| rating | 4 |
+| duration | 3 |
 
----
+Instead of immediately removing these rows, the missing values were investigated to determine whether they represented actual missing information or possible data quality issues.
 
-## 📊 Exploratory Data Analysis & Visualizations
+### 2. Fixing Misplaced Duration Values
 
-### 1. Content Distribution (Movies vs. TV Shows)
-* **Movies** account for **69.6%** of Netflix's catalog, while **TV Shows** make up **30.4%**.
+During the investigation of the missing `duration` values, an issue was found in three rows.
 
-### 2. Top Content Producing Nations
-* The **United States** leads overall volume (2,818+ titles), followed by **India** (972 titles) and the **United Kingdom** (419 titles).
+These rows corresponded to Louis C.K. comedy specials. Their runtime values (`74 min`, `84 min`, and `66 min`) had been incorrectly placed in the `rating` column, while the `duration` column was empty.
 
-### 3. Maturity Rating Distribution
-* **`TV-MA`** (Mature Audiences) is the single most dominant rating category with over 3,200 titles, followed by **`TV-14`** and **`TV-PG`**, highlighting Netflix's heavy focus on adult and young-adult demographics.
+The affected records were corrected by:
 
-### 4. Movie Runtime Trends Over Time
-* Categorized movie runtimes into *Short (<60 min)*, *Standard (60-120 min)*, and *Long (>120 min)* to visualize length distributions relative to release years using `matplotlib` scatter plotting.
+1. Identifying runtime values incorrectly stored in the `rating` column.
+2. Moving those values into the `duration` column.
+3. Replacing the missing rating values with `Unknown`.
 
----
+This helped preserve the original records instead of dropping them from the dataset.
 
-## 💡 Key Business Insights
+### 3. Handling Missing Values
 
-* **Film-Heavy Strategy:** Netflix's library historically leans heavily toward feature films, though TV show additions have accelerated in recent release years.
-* **Regional Hubs:** India represents the second-largest content producer on Netflix, with a overwhelming concentration in feature films compared to episodic TV content.
-* **Core Audience Target:** Over 60% of total platform content falls under mature or teen-restricted categories (`TV-MA` and `TV-14`).
+For categorical columns with missing values, explicit placeholder values were used instead of removing the affected rows.
 
----
+```python
+fill_values = {
+    'director': 'Unknown Director',
+    'cast': 'Unknown Cast',
+    'country': 'Unknown Country',
+    'rating': 'Unknown'
+}
 
-## 🛠️ Tech Stack & Dependencies
+df = df.fillna(fill_values)
+```
 
-* **Language:** Python 3.x
-* **Data Processing:** `pandas`
-* **Visualization:** `matplotlib`
+This approach keeps the titles in the dataset while making missing information explicit.
 
-*(Strictly built without external machine learning dependencies like Scikit-Learn to showcase native Pandas and Matplotlib data manipulation capabilities).*
+### 4. Data Type Corrections
 
----
+The `date_added` column was originally stored as text. It was converted into a proper datetime format:
 
-## 📁 Repository Structure
+```python
+df['date_added'] = pd.to_datetime(
+    df['date_added'],
+    errors='coerce'
+)
+```
+
+This makes it easier to perform time-based analysis, such as grouping titles by year or month.
+
+The `duration` column contained values such as:
 
 ```text
-├── netflix_titles.csv       # Raw Kaggle Netflix dataset (~8,807 rows)
-├── Notebook.ipynb           # Complete Jupyter Notebook (Cleaning + EDA Code)
-├── top10_countries.png      # Generated Matplotlib charts
+90 min
+45 min
+120 min
+```
+
+The numeric portion was extracted using a regular expression:
+
+```python
+df['duration_numeric'] = (
+    df['duration']
+    .str.extract(r'(\d+)')[0]
+    .astype('Int64')
+)
+```
+
+### 5. Runtime Categorization
+
+A runtime category was also created to make duration analysis easier.
+
+The categories used were:
+
+| Category | Runtime |
+|---|---|
+| Short | Less than 60 minutes |
+| Standard | 60–120 minutes |
+| Long | More than 120 minutes |
+
+This provides a simpler way to compare movie runtimes rather than working only with individual numeric values.
+
+## Exploratory Data Analysis
+
+After cleaning the dataset, exploratory analysis was performed using Pandas and Matplotlib.
+
+### Top Content-Producing Countries
+
+The analysis of title origins showed the following countries among the highest contributors:
+
+| Country | Titles |
+|---|---:|
+| United States | 2,818 |
+| India | 972 |
+| Unknown Country | 831 |
+| United Kingdom | 419 |
+| Japan | 245 |
+
+The United States has the largest number of titles in the dataset, followed by India and the United Kingdom.
+
+### Rating Distribution
+
+The most common ratings in the dataset were:
+
+| Rating | Titles |
+|---|---:|
+| TV-MA | 3,210 |
+| TV-14 | 2,160 |
+
+`TV-MA` and `TV-14` account for a large portion of the catalog, indicating a strong presence of content targeted toward mature and older teenage audiences.
+
+## Visualizations
+
+The notebook includes visualizations created using Matplotlib to explore patterns in the dataset.
+
+Some of the analysis includes:
+
+- Distribution of content by type
+- Most common ratings
+- Top content-producing countries
+- Release year trends
+- Movie runtime distribution
+- Runtime categories
+- Content added to Netflix over time
+
+## Repository Structure
+
+```text
+Cleaning-Netflix/
+│
+├── netflix_titles.csv       # Raw Netflix dataset
+├── Notebook.ipynb           # Data cleaning and EDA notebook
 └── README.md                # Project documentation
+```
+
+## Technologies Used
+
+- Python
+- Pandas
+- Matplotlib
+- Jupyter Notebook
+
+## How to Run Locally
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/gagankishoreint-glitch/Cleaning-Netflix.git
+cd Cleaning-Netflix
+```
+
+### 2. Install dependencies
+
+```bash
+pip install pandas matplotlib jupyter
+```
+
+### 3. Launch the notebook
+
+```bash
+jupyter notebook Notebook.ipynb
+```
+
+Open `Notebook.ipynb` and run the cells to reproduce the data cleaning process and exploratory analysis.
+
+## Key Takeaways
+
+This project provided practical experience with:
+
+- Identifying and handling missing data
+- Investigating data quality issues instead of blindly dropping rows
+- Correcting misplaced values
+- Converting columns to appropriate data types
+- Extracting numerical information from text
+- Creating derived features for analysis
+- Performing exploratory data analysis
+- Creating visualizations with Matplotlib
+- Documenting a data-cleaning workflow
